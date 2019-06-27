@@ -68,8 +68,20 @@ function ResponsiveDrawer(props) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [data, setData] = React.useState({
     baseLists: {
-      Inbox: [{ Name: 'Welcome to Open Do!' }]
-    }
+      Inbox: [
+        {
+          Name: 'Welcome to Open Do!',
+          Completed: false,
+          Priority: 4,
+          StartDate: null,
+          DueDate: null,
+          Project: null,
+          Contexts: []
+        }
+      ],
+      Next: []
+    },
+    userLists: {}
   });
   const [init, setInit] = React.useState(false);
 
@@ -77,25 +89,21 @@ function ResponsiveDrawer(props) {
     setMobileOpen(!mobileOpen);
   }
 
-  function initState() {
-    // Initialise the state of the app on load
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir);
-    }
+  async function updateStateFromFile() {
     if (fs.existsSync(dir.concat('/data.json'))) {
-      fs.readFileSync(
-        dir.concat('/data.json'),
-        'utf8',
-        function readFileCallback(err, tempdata) {
-          if (err) {
-            console.log(err);
-          } else {
-            setData(tempdata);
-          }
-        }
+      await console.log('File Exists!');
+      const obj = JSON.parse(
+        await fs.readFileSync(dir.concat('/data.json'), 'utf8')
       );
+      await setData(obj);
+      await console.log('Parsed File:');
+      console.log(obj);
     }
-    fs.writeFileSync(
+  }
+
+  async function updateFileFromState() {
+    await console.log('Writing File...');
+    await fs.writeFileSync(
       dir.concat('/data.json'),
       JSON.stringify(data),
       'utf8',
@@ -105,15 +113,35 @@ function ResponsiveDrawer(props) {
         }
       }
     );
-    setInit(true);
-    console.log(data);
+    console.log('File Written!');
   }
 
-  React.useEffect(() => {
-    if (!init) {
-      initState();
+  async function initState() {
+    // Initialise the state of the app on load
+    if (!fs.existsSync(dir)) {
+      await fs.mkdirSync(dir);
     }
-  });
+    await updateStateFromFile();
+    await updateFileFromState();
+    await setInit(true);
+    await console.log('Init Finished! Logging data:');
+    console.log(data);
+  }
+  // Run init function on first load
+  React.useEffect(() => {
+    async function firstInit() {
+      if (!init) {
+        await console.log('Database has not been initialized!');
+        await initState();
+      }
+      console.log('Database is initialized!');
+    }
+    firstInit();
+  }, []);
+
+  React.useEffect(() => {
+    // Run this everytime data is refreshed and on the first run
+  }, [data]);
 
   const drawer = (
     <div>
@@ -211,11 +239,5 @@ function ResponsiveDrawer(props) {
     </div>
   );
 }
-
-ResponsiveDrawer.propTypes = {
-  // Injected by the documentation to work in an iframe.
-  // You won't need it on your project.
-  container: PropTypes.object
-};
 
 export default ResponsiveDrawer;
