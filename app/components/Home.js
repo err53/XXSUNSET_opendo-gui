@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import routes from '../constants/routes';
 import PropTypes from 'prop-types';
 import AppBar from '@material-ui/core/AppBar';
 import CssBaseline from '@material-ui/core/CssBaseline';
@@ -21,18 +20,12 @@ import LabelImportantIcon from '@material-ui/icons/LabelImportant';
 import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
 import { makeStyles, useTheme } from '@material-ui/core/styles';
+import routes from '../constants/routes';
 
-var fs = require('fs');
-var data;
-var basedata = {
-  lists: {
-    Inbox: [
-      {
-        Name: 'Welcome to Open Do!'
-      }
-    ]
-  }
-};
+const fs = require('fs');
+const dir = require('os')
+  .homedir()
+  .concat('/.open-do');
 
 const drawerWidth = 240;
 
@@ -73,29 +66,54 @@ function ResponsiveDrawer(props) {
   const classes = useStyles();
   const theme = useTheme();
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [data, setData] = React.useState({
+    baseLists: {
+      Inbox: [{ Name: 'Welcome to Open Do!' }]
+    }
+  });
+  const [init, setInit] = React.useState(false);
 
   function handleDrawerToggle() {
     setMobileOpen(!mobileOpen);
   }
 
-  function componentDidMount() {
-    data = fs.readFile('~/.open-do/data.json', err => {
-      if (err) {
-        if (err.code === 'EOENT') {
-          console.log('File not found!');
-          data = basedata;
-        } else {
+  function initState() {
+    // Initialise the state of the app on load
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir);
+    }
+    if (fs.existsSync(dir.concat('/data.json'))) {
+      fs.readFileSync(
+        dir.concat('/data.json'),
+        'utf8',
+        function readFileCallback(err, tempdata) {
+          if (err) {
+            console.log(err);
+          } else {
+            setData(tempdata);
+          }
+        }
+      );
+    }
+    fs.writeFileSync(
+      dir.concat('/data.json'),
+      JSON.stringify(data),
+      'utf8',
+      err => {
+        if (err) {
           throw err;
         }
       }
-    });
-
-    fs.writeFileSync('~/.open-do/data.json', data, (err) => {
-      if (err) {
-        throw err;
-      }
-    });
+    );
+    setInit(true);
+    console.log(data);
   }
+
+  React.useEffect(() => {
+    if (!init) {
+      initState();
+    }
+  });
 
   const drawer = (
     <div>
