@@ -8,6 +8,7 @@ import Drawer from '@material-ui/core/Drawer';
 import Hidden from '@material-ui/core/Hidden';
 import IconButton from '@material-ui/core/IconButton';
 import InboxIcon from '@material-ui/icons/MoveToInbox';
+import Checkbox from '@material-ui/core/Checkbox';
 import ListSubheader from '@material-ui/core/ListSubheader';
 import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
@@ -20,7 +21,9 @@ import LabelImportantIcon from '@material-ui/icons/LabelImportant';
 import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
 import { makeStyles, useTheme } from '@material-ui/core/styles';
+import Button from '@material-ui/core/Button';
 import routes from '../constants/routes';
+import ListPage from './ListPage';
 
 const fs = require('fs');
 const dir = require('os')
@@ -61,6 +64,12 @@ const useStyles = makeStyles(theme => ({
   }
 }));
 
+const PrettyPrintJson = ({ data }) => (
+  <div>
+    <pre>{JSON.stringify(data, null, 2)}</pre>
+  </div>
+);
+
 function ResponsiveDrawer(props) {
   const { container } = props;
   const classes = useStyles();
@@ -70,77 +79,92 @@ function ResponsiveDrawer(props) {
     baseLists: {
       Inbox: [
         {
-          Name: 'Welcome to Open Do!',
-          Completed: false,
-          Priority: 4,
-          StartDate: null,
-          DueDate: null,
-          Project: null,
-          Contexts: []
+          name: 'Welcome to Open-Do!',
+          completion: false,
+          priority: 4,
+          startDate: null,
+          endDate: null,
+          contexts: []
         }
       ],
       Next: []
     },
     userLists: {}
   });
-  const [init, setInit] = React.useState(false);
+
+  const changeData = (group, list, index, property, variable) => {
+    console.log('ding!');
+    console.log(`${group}\n${list}\n${index}\n${variable}`);
+    console.log(data);
+    const tempData = { ...data };
+    tempData[group][list][index] = {
+      ...data[group][list][index],
+      [property]: variable
+    };
+    setData(tempData);
+  };
 
   function handleDrawerToggle() {
     setMobileOpen(!mobileOpen);
   }
 
-  async function updateStateFromFile() {
-    if (fs.existsSync(dir.concat('/data.json'))) {
-      await console.log('File Exists!');
-      const obj = JSON.parse(
-        await fs.readFileSync(dir.concat('/data.json'), 'utf8')
-      );
-      await setData(obj);
-      await console.log('Parsed File:');
-      console.log(obj);
-    }
-  }
+  // Data Input Function
+  async function readData() {
+    let obj = null;
 
-  async function updateFileFromState() {
-    await console.log('Writing File...');
-    await fs.writeFileSync(
-      dir.concat('/data.json'),
-      JSON.stringify(data),
-      'utf8',
-      err => {
-        if (err) {
-          throw err;
-        }
-      }
-    );
-    console.log('File Written!');
-  }
-
-  async function initState() {
-    // Initialise the state of the app on load
+    // Make Folder if Absent
     if (!fs.existsSync(dir)) {
       await fs.mkdirSync(dir);
     }
-    await updateStateFromFile();
-    await updateFileFromState();
-    await setInit(true);
-    await console.log('Init Finished! Logging data:');
-    console.log(data);
-  }
-  // Run init function on first load
-  React.useEffect(() => {
-    async function firstInit() {
-      if (!init) {
-        await console.log('Database has not been initialized!');
-        await initState();
-      }
-      console.log('Database is initialized!');
+
+    // Get Data
+    if (fs.existsSync(dir.concat('/data.json'))) {
+      console.log('File Exists!');
+      obj = await JSON.parse(fs.readFileSync(dir.concat('/data.json'), 'utf8'));
+      console.log('Parsed File:');
+      console.log(obj);
+    } else {
+      console.log('File Does Not Exist!');
+      obj = data;
     }
-    firstInit();
+
+    // Update State
+    if (JSON.stringify(obj) !== JSON.stringify(data)) {
+      console.log('Data has changed!');
+      console.log('Updating...');
+      setData(obj);
+    }
+  }
+
+  // Initially Read Data
+  React.useEffect(() => {
+    readData();
   }, []);
 
+  // Write Data
   React.useEffect(() => {
-    // Run this everytime data is refreshed and on the first run
+    async function writeData() {
+      // Make Folder if Absent
+      if (!fs.existsSync(dir)) {
+        await fs.mkdirSync(dir);
+      }
+
+      // Write Data
+      console.log('Writing File...');
+      await fs.writeFileSync(
+        dir.concat('/data.json'),
+        JSON.stringify(data),
+        'utf8',
+        err => {
+          if (err) {
+            throw err;
+          }
+        }
+      );
+      console.log('File Written!');
+    }
+
+    writeData();
   }, [data]);
 
   const drawer = (
@@ -235,6 +259,22 @@ function ResponsiveDrawer(props) {
           Home
         </Typography>
         <Link to={routes.COUNTER}>to Counter</Link>
+        <Button onClick={readData}>Force Update</Button>
+        <Typography>
+          <PrettyPrintJson data={data} />
+        </Typography>
+        <ListPage
+          list={data.baseLists.Inbox}
+          updateCheckbox={(item, variable) => {
+            console.log('pong!');
+            console.log(item);
+            console.log(variable);
+            changeData('baseLists', 'Inbox', item, 'completion', variable);
+          }}
+          updateText={(index, variable) => {
+            changeData('baseLists', 'Inbox', index, 'name', variable);
+          }}
+        />
       </main>
     </div>
   );
