@@ -61,7 +61,7 @@ export default function ListPage(props) {
                   // console.log(this.props);
                 }}
               />
-              <input type="text" value={text} onChange={handleChange} />
+
               <InputBase
                 className={classes.margin}
                 defaultValue={text}
